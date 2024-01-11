@@ -25,7 +25,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -38,6 +37,7 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
     private FusedLocationProviderClient fusedLocationClient;
     private LocationRequest locationRequest;
     private Button logoutButton;
+    private Button bookRideButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +54,7 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
 
         // Initialize UI elements
         logoutButton = findViewById(R.id.CustomerlogoutButton);
+        bookRideButton = findViewById(R.id.customer_book_btn);
 
         // Set click listener for the logout button
         logoutButton.setOnClickListener(new View.OnClickListener() {
@@ -64,6 +65,15 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
                 welcomeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(welcomeIntent);
                 finish();
+            }
+        });
+
+        // Set click listener for the "Book Ride" button
+        bookRideButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Call the method to update the customer's location in the database
+                updateCustomerLocationInDatabase();
             }
         });
 
@@ -130,7 +140,7 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
             // Listen for changes in the customer's location
             customerLocationRef.addValueEventListener(new ValueEventListener() {
                 @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
                         // Retrieve and handle the customer's location data
                         double latitude = dataSnapshot.child("latitude").getValue(Double.class);
@@ -158,5 +168,33 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
     @Override
     public void onLocationChanged(Location location) {
         // Handle location changes if needed
+    }
+
+    private void updateCustomerLocationInDatabase() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String userID = currentUser.getUid();
+            DatabaseReference customerLocationRef = FirebaseDatabase.getInstance().getReference().child("customersLocation").child(userID);
+
+            // Get the last known location
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, location -> {
+                        if (location != null) {
+                            // Update the customer's location in the database
+                            customerLocationRef.child("latitude").setValue(location.getLatitude());
+                            customerLocationRef.child("longitude").setValue(location.getLongitude());
+                        }
+                    });
+        }
     }
 }
