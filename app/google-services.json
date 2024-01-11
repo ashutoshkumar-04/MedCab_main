@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "895486441637",
+    "firebase_url": "https://medcab-e8ad2-default-rtdb.firebaseio.com",
+    "project_id": "medcab-e8ad2",
+    "storage_bucket": "medcab-e8ad2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895486441637:android:c4e7d5d3a5e3cbb878754c",
+        "android_client_info": {
+          "package_name": "com.example.medcab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt4UnaYEUex8XKe7YtzorHAoxQlOUVBI0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895486441637:android:496f5af9c9218e8b78754c",
+        "android_client_info": {
+          "package_name": "com.example.medcab_main"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt4UnaYEUex8XKe7YtzorHAoxQlOUVBI0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
