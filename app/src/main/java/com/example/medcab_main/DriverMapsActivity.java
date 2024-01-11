@@ -25,7 +25,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -37,6 +36,8 @@ public class DriverMapsActivity extends FragmentActivity implements OnMapReadyCa
     private GoogleMap mMap;
     private FusedLocationProviderClient fusedLocationClient;
     private LocationRequest locationRequest;
+    private DatabaseReference driverLocationRef;
+    private DatabaseReference driverAvailabilityRef;
     private Button logoutButton;
 
     @Override
@@ -67,8 +68,63 @@ public class DriverMapsActivity extends FragmentActivity implements OnMapReadyCa
             }
         });
 
-        // Retrieve and display the driver's location
-        retrieveDriverLocation();
+        // Initialize driver's location in the database
+        initializeDriverLocation();
+
+        // Initialize driver availability reference
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String userID = currentUser.getUid();
+            driverAvailabilityRef = FirebaseDatabase.getInstance().getReference().child("driversAvailability").child(userID);
+            // Set initial availability (example: true for available, false for unavailable)
+            updateDriverAvailabilityInDatabase(true);
+        }
+    }
+
+    private void initializeDriverLocation() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String userID = currentUser.getUid();
+            driverLocationRef = FirebaseDatabase.getInstance().getReference().child("driversLocation").child(userID);
+
+            // Get the last known location
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, location -> {
+                        if (location != null) {
+                            // Set the initial location in the database
+                            driverLocationRef.child("latitude").setValue(location.getLatitude());
+                            driverLocationRef.child("longitude").setValue(location.getLongitude());
+                        }
+                    });
+        }
+    }
+
+    private void updateDriverLocationInDatabase(Location location) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String userID = currentUser.getUid();
+            driverLocationRef = FirebaseDatabase.getInstance().getReference().child("driversLocation").child(userID);
+
+            // Update the location in the database
+            driverLocationRef.child("latitude").setValue(location.getLatitude());
+            driverLocationRef.child("longitude").setValue(location.getLongitude());
+        }
+    }
+
+    private void updateDriverAvailabilityInDatabase(boolean isAvailable) {
+        if (driverAvailabilityRef != null) {
+            driverAvailabilityRef.setValue(isAvailable);
+        }
     }
 
     @Override
@@ -116,43 +172,12 @@ public class DriverMapsActivity extends FragmentActivity implements OnMapReadyCa
                     LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
                     mMap.addMarker(new MarkerOptions().position(currentLocation).title("Current Location"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLocation));
+
+                    // Update the driver's location in the database
+                    updateDriverLocationInDatabase(location);
                 }
             }
         }, null);
-    }
-
-    private void retrieveDriverLocation() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null) {
-            String userID = currentUser.getUid();
-            DatabaseReference driverLocationRef = FirebaseDatabase.getInstance().getReference().child("driversLocation").child(userID);
-
-            // Listen for changes in the driver's location
-            driverLocationRef.addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if (dataSnapshot.exists()) {
-                        // Retrieve and handle the driver's location data
-                        double latitude = dataSnapshot.child("latitude").getValue(Double.class);
-                        double longitude = dataSnapshot.child("longitude").getValue(Double.class);
-
-                        // Do something with the location data (e.g., update marker on the map)
-                        LatLng driverLocation = new LatLng(latitude, longitude);
-                        mMap.addMarker(new MarkerOptions().position(driverLocation).title("Driver Location"));
-                        mMap.moveCamera(CameraUpdateFactory.newLatLng(driverLocation));
-
-                        Log.d("FirebaseData", "Driver Location: " + latitude + ", " + longitude);
-                    } else {
-                        Log.d("FirebaseData", "Driver Location is null");
-                    }
-                }
-
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
-                    Log.e("FirebaseError", "Error: " + databaseError.getMessage());
-                }
-            });
-        }
     }
 
     @Override
