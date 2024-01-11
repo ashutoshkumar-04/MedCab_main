@@ -25,6 +25,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -37,7 +38,7 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
     private FusedLocationProviderClient fusedLocationClient;
     private LocationRequest locationRequest;
     private Button logoutButton;
-    private Button bookRideButton;
+    private Button bookRideButton; // Add this button for booking rides
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +55,7 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
 
         // Initialize UI elements
         logoutButton = findViewById(R.id.CustomerlogoutButton);
-        bookRideButton = findViewById(R.id.customer_book_btn);
+        bookRideButton = findViewById(R.id.customer_book_btn); // Initialize the "Book Ride" button
 
         // Set click listener for the logout button
         logoutButton.setOnClickListener(new View.OnClickListener() {
@@ -140,7 +141,7 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
             // Listen for changes in the customer's location
             customerLocationRef.addValueEventListener(new ValueEventListener() {
                 @Override
-                public void onDataChange(@NonNull com.google.firebase.database.DataSnapshot dataSnapshot) {
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
                         // Retrieve and handle the customer's location data
                         double latitude = dataSnapshot.child("latitude").getValue(Double.class);
@@ -163,11 +164,6 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
                 }
             });
         }
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        // Handle location changes if needed
     }
 
     private void updateCustomerLocationInDatabase() {
@@ -193,8 +189,51 @@ public class CustomerMapsActivity extends FragmentActivity implements OnMapReady
                             // Update the customer's location in the database
                             customerLocationRef.child("latitude").setValue(location.getLatitude());
                             customerLocationRef.child("longitude").setValue(location.getLongitude());
+
+                            // Query and display available drivers
+                            queryAndDisplayAvailableDrivers(location.getLatitude(), location.getLongitude());
                         }
                     });
         }
+    }
+
+    private void queryAndDisplayAvailableDrivers(double customerLatitude, double customerLongitude) {
+        DatabaseReference driversLocationRef = FirebaseDatabase.getInstance().getReference().child("driversLocation");
+
+        // Add a ValueEventListener to listen for changes in the drivers' locations
+        driversLocationRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                mMap.clear(); // Clear previous markers on the map
+
+                for (DataSnapshot driverSnapshot : dataSnapshot.getChildren()) {
+                    // Retrieve driver's location data
+                    double driverLatitude = driverSnapshot.child("latitude").getValue(Double.class);
+                    double driverLongitude = driverSnapshot.child("longitude").getValue(Double.class);
+
+                    // Create LatLng object for driver's location
+                    LatLng driverLocation = new LatLng(driverLatitude, driverLongitude);
+
+                    // Add marker for each driver on the map
+                    mMap.addMarker(new MarkerOptions().position(driverLocation).title("Driver Location"));
+                }
+
+                // Zoom the camera to show both customer and drivers on the map
+                LatLng customerLocation = new LatLng(customerLatitude, customerLongitude);
+                mMap.addMarker(new MarkerOptions().position(customerLocation).title("Customer Location"));
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(customerLocation));
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(customerLocation, 12.0f));
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.e("FirebaseError", "Error: " + databaseError.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        // Handle location changes if needed
     }
 }

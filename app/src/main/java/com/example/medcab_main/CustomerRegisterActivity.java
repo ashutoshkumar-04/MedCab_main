@@ -17,6 +17,9 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class CustomerRegisterActivity extends AppCompatActivity {
 
@@ -98,8 +101,12 @@ public class CustomerRegisterActivity extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             Toast.makeText(CustomerRegisterActivity.this, "Customer Logged-In Successfully!", Toast.LENGTH_SHORT).show();
 
+                            // Update user's status in the database
+                            updateCustomerStatus();
+
                             Intent customerIntent = new Intent(CustomerRegisterActivity.this, CustomerMapsActivity.class);
                             startActivity(customerIntent);
+                            finish();
                         } else {
                             Toast.makeText(CustomerRegisterActivity.this, "Customer Login Unsuccessful, Please try again", Toast.LENGTH_SHORT).show();
                         }
@@ -125,12 +132,27 @@ public class CustomerRegisterActivity extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             Toast.makeText(CustomerRegisterActivity.this, "Customer Registered Successfully!", Toast.LENGTH_SHORT).show();
 
+                            // Update user's status in the database
+                            updateCustomerStatus();
+
                             Intent customerIntent = new Intent(CustomerRegisterActivity.this, CustomerMapsActivity.class);
                             startActivity(customerIntent);
+                            finish();
                         } else {
                             Toast.makeText(CustomerRegisterActivity.this, "Customer Registration Unsuccessful", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
+    }
+
+    private void updateCustomerStatus() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String userID = currentUser.getUid();
+            DatabaseReference customerRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(userID);
+
+            // Set the customer's status in the database
+            customerRef.setValue(true);
+        }
     }
 }
